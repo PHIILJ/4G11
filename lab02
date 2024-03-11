@@ -1,1 +1,75 @@
 
+ if (pid == 0) { /* Processo filho */
+        printf("Entrei no filho!\n");
+        value += 15;
+        printf ("FILHO: value = %d\n",value); /* LINHA A */
+        return 0;
+    }
+    else if (pid > 0) { /* Processo pai */
+        wait(NULL);
+        printf ("PAI: value = %d\n",value); /* LINHA A */
+        return 0;
+     }
+
+
+
+Inicialmente, há um processo (processo original) que imprime seu próprio PID.
+Após a primeira chamada de fork(), um novo processo é criado, resultando em dois processos. Ambos imprimem seus próprios PIDs.
+Após a segunda chamada de fork(), cada um dos dois processos existentes cria um novo processo filho. Isso resulta em quatro processos. Cada um dos quatro processos imprime seu próprio PID.
+Após a terceira chamada de fork(), cada um dos quatro processos existentes cria mais um novo processo filho. Isso resulta em oito processos no total. Cada um dos oito processos imprime seu próprio PID.
+Portanto, ao final da execução do programa, serão criados um total de 8 processos.
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <wait.h>
+
+#define BUFFER_SIZE 25
+
+int main() {
+    int pipefd[2];
+    pid_t pid;
+    char buffer[BUFFER_SIZE];
+
+    // Criar o pipe
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    // Criar o processo filho
+    pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0) { // Processo filho
+        close(pipefd[1]); // Fechar o descritor de escrita do pipe no processo filho
+        read(pipefd[0], buffer, BUFFER_SIZE); // Ler a mensagem do pipe
+        printf("Filho recebeu: %s", buffer);
+        close(pipefd[0]); // Fechar o descritor de leitura do pipe no processo filho
+        exit(EXIT_SUCCESS);
+    } else { // Processo pai
+        close(pipefd[0]); // Fechar o descritor de leitura do pipe no processo pai
+        printf("Digite uma mensagem para o filho: ");
+        fgets(buffer, BUFFER_SIZE, stdin); // Ler a mensagem do usuário
+        write(pipefd[1], buffer, strlen(buffer) + 1); // Escrever a mensagem no pipe
+        close(pipefd[1]); // Fechar o descritor de escrita do pipe no processo pai
+        wait(NULL); // Esperar pelo processo filho
+        exit(EXIT_SUCCESS);
+    }
+
+    return 0;
+}
+
+Neste exemplo:
+
+Um pipe é criado usando pipe().
+O processo pai cria um processo filho usando fork(). O processo filho fecha o descritor de escrita do pipe, lê a mensagem do pipe, imprime-a e fecha o descritor de leitura do pipe.
+Depios o processo pai fecha o descritor de leitura do pipe, solicita uma mensagem ao usuário, escreve essa mensagem no pipe e fecha o descritor de escrita do pipe.
+ E após a troca de mensagens, o processo pai espera pela finalização do processo filho.
